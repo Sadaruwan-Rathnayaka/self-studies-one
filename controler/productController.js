@@ -1,6 +1,7 @@
 import Product from "../models/product.js";
 import productRouter from './../routes/productRouter.js';
 import { isAdmin } from "./userController.js";
+//import { async } from './productController.js';
 
 export async function getProducts(req,res){
 
@@ -68,4 +69,75 @@ catch(err){
         error:err
     })
 }
+}
+
+export async function updateProduct(req,res){
+    if(!isAdmin(req)){
+        res.status(403).json({
+            message : "You are not authorized to update products "
+        })
+        return
+    }
+    const productId = req.params.productId
+    const updatingData = req.body
+
+    try{
+        await Product.updateOne(
+            {productId:productId},
+            updatingData
+    )
+    res.json(
+        {message : "product updated successfully"}
+    )
+        }
+            catch(err){
+        res.status(500).json({
+            message : "internal server error",
+            error:err
+        })
+    }
+}
+
+export async function getProductById (req,res){
+    const productId=req.params.productId
+    const admin=isAdmin(req)
+
+
+    try{
+const product = await Product.findOne(
+    {productId:productId}
+)
+    if(product==null){
+        res.status(404).json(
+            {
+                message :"product not found"
+            }
+        ); return
+    }
+    
+    if(product.isAvailble){
+        res.json(product)
+
+    }else{
+            if(!isAdmin(req)){
+                res.status(404).json(
+                    {
+                        message : "product  not found"
+                    }
+                )
+                return
+            } else {
+                res.json(product)
+            }
+    }
+
+    }catch (err){
+        res.status(500).json(
+            {
+                message: "Internal Server Eroor",
+                error:err
+            }
+        )
+
+    }
 }

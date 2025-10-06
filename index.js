@@ -1,13 +1,10 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import mongoose from 'mongoose';
-//import Student from './models/student.js';
-import Product from './models/product.js';
-import User from './models/user.js';
-//import studentRouter from './routes/studentRouter.js';
+import mongoose from 'mongoose'; 
 import productRouter from './routes/productRouter.js';
 import userRouter from './routes/userRouter.js';
 import  jwt  from 'jsonwebtoken';
+import orderRouter from './routes/orderRouter.js';
 
 
 //mongodb+srv://admin:123@cluster0.jlajdyv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
@@ -46,12 +43,13 @@ app.use(
 mongoose.connect("mongodb+srv://admin:123@cluster0.jlajdyv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0").then(()=>{
 console.log("connected to the database")
 }).catch(()=>{
-    console.log("database conenction failed")
+    console.log("database connenction failed")
 })
 
 
 app.use("/products",productRouter)
 app.use("/users",userRouter)
+app.use("/orders",orderRouter)
 
 app.listen(5002, () => {
     console.log('Server is running on port 5002');
