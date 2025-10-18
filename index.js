@@ -7,6 +7,7 @@ import  jwt  from 'jsonwebtoken';
 import orderRouter from './routes/orderRouter.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 //mongodb+srv://admin:123@cluster0.jlajdyv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
@@ -43,16 +44,19 @@ app.use(
 
 
 
-mongoose.connect(process.env.MONGODB_URL).then(()=>{
-console.log("connected to the database")
-}).catch(()=>{
-    console.log("database connenction failed")
+mongoose.connect("mongodb+srv://admin:123@cluster0.jlajdyv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+.then(() => {
+    console.log("✅ Connected to the database");
 })
+.catch((err) => {
+    console.log("❌ Database connection failed:");
+    console.error(err);
+});
 
 
-app.use("api/products",productRouter)
-app.use("api/users",userRouter)
-app.use("api/orders",orderRouter)
+app.use("/products",productRouter)
+app.use("/users",userRouter)
+app.use("/orders",orderRouter)
 
 app.listen(5002, () => {
     console.log('Server is running on port 5002');
