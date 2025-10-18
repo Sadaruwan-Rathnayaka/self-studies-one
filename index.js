@@ -5,12 +5,13 @@ import productRouter from './routes/productRouter.js';
 import userRouter from './routes/userRouter.js';
 import  jwt  from 'jsonwebtoken';
 import orderRouter from './routes/orderRouter.js';
-
+import cors from 'cors';
 
 //mongodb+srv://admin:123@cluster0.jlajdyv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
 
 const app = express();
 
+app.use(cors())
 app.use(bodyParser.json())
 app.use(
     (req,res,next)=>{
@@ -47,9 +48,9 @@ console.log("connected to the database")
 })
 
 
-app.use("/products",productRouter)
-app.use("/users",userRouter)
-app.use("/orders",orderRouter)
+app.use("api/products",productRouter)
+app.use("api/users",userRouter)
+app.use("api/orders",orderRouter)
 
 app.listen(5002, () => {
     console.log('Server is running on port 5002');
