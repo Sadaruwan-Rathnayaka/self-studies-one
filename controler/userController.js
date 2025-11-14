@@ -1,6 +1,7 @@
 import User from "../models/user.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import dotenv from 'dotenv';
 
 export function creteUser(req,res){
 
@@ -66,7 +67,7 @@ const token=jwt.sign({
     role:user.role,
     img:user.img
 },
-"chamo"
+process.env.JWT_KEY
 )
 
                     res.json({

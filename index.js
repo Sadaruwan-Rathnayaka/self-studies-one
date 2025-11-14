@@ -7,7 +7,6 @@ import  jwt  from 'jsonwebtoken';
 import orderRouter from './routes/orderRouter.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
-
 dotenv.config();
 
 //mongodb+srv://admin:123@cluster0.jlajdyv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
@@ -21,9 +20,9 @@ app.use(
         const tokenString=req.header("Authorization")
         if(tokenString != null){
             const token=tokenString.replace("Bearer ","")
-            
 
-                    jwt.verify(token,"chamo",(err,decoded)=>{
+
+                    jwt.verify(token,process.env.JWT_KEY,(err,decoded)=>{
                         if(decoded != null){
                             console.log(decoded)
                             req.user=decoded
@@ -38,28 +37,24 @@ app.use(
         } else {
             next()
         }
-    
+
     }
 )
 
 
 
-mongoose.connect("mongodb+srv://admin:123@cluster0.jlajdyv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-.then(() => {
-    console.log("✅ Connected to the database");
+mongoose.connect(process.env.MONGODB_UR).then(()=>{
+console.log("connected to the database")
+}).catch(()=>{
+    console.log("database connenction failed")
 })
-.catch((err) => {
-    console.log("❌ Database connection failed:");
-    console.error(err);
-});
 
 
 app.use("/products",productRouter)
 app.use("/users",userRouter)
-app.use("/orders",orderRouter)
+app.use("/orders",orderRouter) 
+ 
 
 app.listen(5002, () => {
     console.log('Server is running on port 5002');
 })
-
-
