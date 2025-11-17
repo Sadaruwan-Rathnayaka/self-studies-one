@@ -1,114 +1,109 @@
+// controllers/orderController.js
+import Order from "../models/order.js";
+import Product from "../models/product.js";
 
-import Order from '../models/order.js';
-import Product from '../models/product.js';
+// Simple orderId generator (P000001, P000002, ...)
+async function generateOrderId() {
+  const last = await Order.findOne().sort({ createdAt: -1 }).lean();
+  if (!last || !last.orderId) return "P000001";
 
-export async function createOrder(req,res){
-    
-    //get user information
-
-    if (req.user==null){
-        res.status(403).json({
-            message : "plese login and try againn later"
-        })
-        return
-    }
-
-    const orderInfo = req.body
-    if(orderInfo.name==null){
-        orderInfo.name=req.user.firstName+" "+req.user.lastName
-    }
-
-    //P000001
-    let orderId="P000001"
-    const lastOrder = await Order.find().sort({date:-1}).limit(1)
-    //[]
-
-    if(lastOrder.length > 0){
-        const lastOrderId = lastOrder[0].orderId
-        const lastOrderNumberString=lastOrderId.replace("P","")
-        const lastOrderNumber=parseInt(lastOrderNumberString)
-        const newOrderNumber=lastOrderNumber+1 
-        const newOrderNumberString=String(newOrderNumber).padStart(6,'0');
-        orderId="P"+newOrderNumberString 
-    }
-
-    
-        let total=0;
-        let labeledTotal =0
-        const products=[]
-
-        for(let i=0; i<orderInfo.products.length; i++){
-            const item = await Product.findOne({
-                productId:orderInfo.products[i].productId
-            })
-            if(item==null){
-                res.status(404).json({
-                    message :"product with productId "+orderInfo.products[i].productId +"not found"
-                })
-                return
-            }
-
-if(item.isAvailble==false){
-    res.status(404).json({
-        message : "product with productId "+orderInfo.products[i].productId +"not found"
-    }); return
+  const num = parseInt(last.orderId.replace("P", ""), 10) || 0;
+  return "P" + String(num + 1).padStart(6, "0");
 }
 
-            products[i]={
-                productInfo :{
-                    productId:item.productId,
-                    name:item.name,
-                    altName:item.altName,
-                    description:item.description,
-                    images:item.images,
-                    labeledPrice:item.labeledPrice,
-                    price:item.price,
-                    quantity:orderInfo.products[i].quantity
-                
-                },
-
-                quantity:orderInfo.products[i].quantity
-            }
-        total=total+(item.price * orderInfo.products[i].quantity)
-        labeledTotal+=(item.labeledPrice*orderInfo.products[i].quantity)
-
+export async function createOrder(req, res) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Please login and try again." });
     }
 
-    
+    const orderInfo = req.body || {};
 
-    const order=new Order({
-        orderId:orderId,
-        email:req.user.email,
-        name:orderInfo.name,
-        address:orderInfo.address,
-        phone : orderInfo.phone,
-        products: products,
-        total:total,
-        labeledTotal: labeledTotal
-
-
-    })
-    try{
-        const createOrder=  await order.save()
-        res.json({
-            message:"Order creted successfully",
-            order:createOrder
-        })
-    }
-    catch(err){
-        res.status(500).json({
-            message:"failed to crete order",
-            error:err
-        })
-
+    if (!Array.isArray(orderInfo.products) || orderInfo.products.length === 0) {
+      return res.status(400).json({ message: "No products provided." });
     }
 
-    
+    if (!orderInfo.name) {
+      orderInfo.name = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim();
+    }
 
-    
-    
-    //add current users name if not provided
-    //order id generate
-    // order create
+    const orderId = await generateOrderId();
+
+    let total = 0;
+    let labeledTotal = 0;
+    const products = [];
+
+    for (let i = 0; i < orderInfo.products.length; i++) {
+      const p = orderInfo.products[i];
+
+      if (!p || !p.productId || !p.quantity) {
+        return res.status(400).json({ message: `Invalid product at index ${i}` });
+      }
+
+      const item = await Product.findOne({ productId: p.productId }).lean();
+      if (!item) {
+        return res.status(404).json({ message: `Product ${p.productId} not found` });
+      }
+
+      // your exact spelling: isAvailble
+      if (item.isAvailble === false) {
+        return res.status(400).json({ message: `Product ${p.productId} is not available` });
+      }
+
+      const qty = Number(p.quantity);
+      if (isNaN(qty) || qty <= 0) {
+        return res.status(400).json({ message: `Invalid quantity for ${p.productId}` });
+      }
+
+      products.push({
+        productInfo: {
+          productId: item.productId,
+          name: item.name,
+          altName: item.altName || [],
+          description: item.description || "",
+          images: item.images || [],
+          labeledPrice: Number(item.labeledPrice) || 0,
+          price: Number(item.price) || 0
+        },
+        quantity: qty
+      });
+
+      total += (item.price || 0) * qty;
+      labeledTotal += (item.labeledPrice || 0) * qty;
+    }
+
+    const order = new Order({
+      orderId,
+      email: req.user.email,
+      name: orderInfo.name,
+      address: orderInfo.address || "",
+      phone: orderInfo.phone || "",
+      products,
+      total,
+      labeledTotal
+    });
+
+    const created = await order.save();
+    return res.status(201).json({
+      message: "Order created",
+      order: created
+    });
+
+  } catch (err) {
+    console.error("createOrder error:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
 }
-    
+
+export async function getOrdersByUser(req, res) {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Please login." });
+
+    const orders = await Order.find({ email: req.user.email }).sort({ createdAt: -1 });
+    return res.json(orders);
+
+  } catch (err) {
+    console.error("getOrdersByUser error:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+}

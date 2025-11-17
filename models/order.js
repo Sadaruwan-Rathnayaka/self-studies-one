@@ -1,102 +1,34 @@
+// models/order.js
 import mongoose from "mongoose";
 
-const orderSchem = mongoose.Schema({
-    orderId:{
-        type:String,
-        required:true,
-        unique:true
+const orderProductSchema = new mongoose.Schema(
+  {
+    productInfo: {
+      productId: { type: String },
+      name: { type: String },
+      altName: { type: [String], default: [] },
+      description: { type: String, default: "" },
+      images: { type: [String], default: [] },
+      labeledPrice: { type: Number, default: 0 },
+      price: { type: Number, default: 0 }
     },
+    quantity: { type: Number, required: true, default: 1 }
+  },
+  { _id: false }
+);
 
-    
-    email :  {
-        type:String,
-    required:true
-    },
+const orderSchema = new mongoose.Schema(
+  {
+    orderId: { type: String, required: true, unique: true },
+    email: { type: String, required: true },
+    name: { type: String },
+    address: { type: String },
+    phone: { type: String },
+    products: { type: [orderProductSchema], default: [] },
+    total: { type: Number, default: 0 },
+    labeledTotal: { type: Number, default: 0 }
+  },
+  { timestamps: true }
+);
 
-    name  :{
-    type:String,
-    required:true
-    },
-
-    phone : {
-    type:String,
-    required:true
-    },
-
-    address : {
-    type:String,
-    required:true
-    },
-
-    status : {
-    type:String,
-    required:true,
-    default : "pending"
-    },
-
-    labeledTotal :{
-        type:Number,
-    required:true
-    },
-
-    total : {
-    type:String,
-    required:true
-    },
-
-    products : [
-        {
-        productInfo : {
-
-            productId : {
-            type:String,
-            required:true,
-            unique:true
-        },
-        
-            name: {
-            type:String,
-            required:true,
-            },
-
-            altName : [{
-            type:String    
-            }],
-
-            description : {
-            type:String,
-            required:true 
-            },
-
-            images :[{
-            type : String
-            }],
-
-            labeledPrice : {
-            type:Number,
-            required:true   
-            },
-
-            price : {
-                type :Number,
-                required:true
-            },
-
-        quantity :{
-        type:Number,
-        required:true
-        },
-    }
-}
-
-    ],
-    date  :{
-        type:Date,
-        default:Date.now
-    }
-
-})
-
-const Order =mongoose.model("order",orderSchem)
-
-export default Order;
+export default mongoose.model("Order", orderSchema);

@@ -1,99 +1,96 @@
+// controllers/userController.js
 import User from "../models/user.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import dotenv from 'dotenv';
 
-export function creteUser(req,res){
+// Create new user
+export async function createUser(req, res) {
+  try {
+    const { firstName, lastName, email, password, role } = req.body;
 
-    if(req.body.role=="admin"){
-        if(req.body.user!==null){
-            if(req.user.role !== "admin"){
-                res.status(403).json({
-                    message:"you are not authrorized to certe an admin accounts"
-                })
-                return
-            }
-
-        }else{
-            res.status(403).json({
-                message:"first crete admin accounr and login"
-            })
-            return
-        }
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-const hashedPassword=bcrypt.hashSync(req.body.password,10)
+    // Only admin can create admin accounts
+    if (role === "admin") {
+      if (!req.user || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Not authorized to create admin" });
+      }
+    }
 
-    const user=new User({
-        email : req.body.email,
-        firstName : req.body.firstName,
-        lastName : req.body.lastName,
-        password : hashedPassword,
-        role : req.body.role
-        
-    
-    })
+    const exists = await User.findOne({ email });
+    if (exists) {
+      return res.status(409).json({ message: "Email already registered" });
+    }
 
-    user.save().then(
-        ()=>{
-            res.json ({
-                message:'user crete succesfully'
-            })
-        }
-    ).catch(()=>{
-        res.json({
-            message:"failed"
-        })
-    })
-    
-}
-export function loginUser(req,res){
-    const email=req.body.email
-    const password=req.body.password
+    const hashed = await bcrypt.hash(password, 10);
 
-    User.findOne({email:email}).then(
-        (user)=>{
-            if(user==null){
-                res.status(404).json({
-                    message:"user not found"
-                })
-            }else {
-                const ispasswordCorrect = bcrypt.compareSync(password,user.password)
-                if (ispasswordCorrect){
-const token=jwt.sign({
-    email:user.email,
-    firstName:user.firstName,
-    lastName:user.lastName,
-    role:user.role,
-    img:user.img
-},
-process.env.JWT_KEY
-)
+    const user = new User({
+      firstName,
+      lastName,
+      email,
+      password: hashed,
+      role: role || "customer",
+    });
 
-                    res.json({
-                        message:"login sucessfully",
-                        token:token
-                    })
-                } else {
-                    res.status(401).json({
-                        message:"invalid passwod"
-                    })
-                }
-            }
-        }
-    )
-    
+    await user.save();
+    return res.status(201).json({ message: "User created successfully" });
+
+  } catch (err) {
+    console.error("createUser error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
 }
 
-export function isAdmin(req){
-    if(req.user==null){
-    
-        return false
+// Login
+export async function loginUser(req, res) {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
     }
-    
-    if(req.user.role != "admin"){
-    
-        return false
-    }
-    return true
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(401).json({ message: "Invalid password" });
+
+    const token = jwt.sign(
+      {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        img: user.img
+      },
+      process.env.JWT_KEY || "chamo",
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      message: "Login successful",
+      token,
+      role: user.role
+    });
+
+  } catch (err) {
+    console.error("login error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+// Check admin
+export function isAdmin(req) {
+  return !!(req?.user && req.user.role === "admin");
+}
+
+// Admin-only middleware
+export function requireAdmin(req, res, next) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin only" });
+  }
+  next();
 }
